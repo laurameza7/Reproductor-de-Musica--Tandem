@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tandem Music Player</title>
+<meta name="description" content="Tandem: a web music player built on doubly linked lists. Play the songs saved on your own device.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='14' fill='%230F8F7E'/%3E%3Cpath d='M15 19h16.5l-4.2-4.2M33 29H16.5l4.2 4.2' stroke='%23fff' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='35.5' cy='19' r='3.6' fill='%23F4B740'/%3E%3Ccircle cx='12.5' cy='29' r='3.6' fill='%23F4B740'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+</head>
+<body>
+<!--APP-START-->
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" id="logo"></span>
+      <div class="brand-text">
+        <h1>Tandem</h1>
+        <p>Every song knows its neighbors</p>
+      </div>
+    </div>
+    <label class="search" for="search">
+      <span id="searchIcon"></span>
+      <input id="search" type="search" placeholder="Search this playlist" autocomplete="off">
+    </label>
+    <button class="ghost-btn" id="helpBtn" type="button"><span id="kbIcon"></span><span class="hide-sm">Shortcuts</span></button>
+  </header>
+
+  <aside class="sidebar" aria-label="Playlists">
+    <div class="side-head">
+      <span class="eyebrow">Your playlists</span>
+      <button id="newPlaylist" class="icon-btn" type="button" title="New playlist" aria-label="New playlist"></button>
+    </div>
+    <ul id="playlistList" class="pl-list"></ul>
+    <p class="side-foot" id="storageInfo">Songs stay on this device. Nothing is uploaded.</p>
+  </aside>
+
+  <main class="queue">
+    <div class="pl-header">
+      <div class="pl-art" id="plArt"></div>
+      <div class="pl-meta">
+        <span class="eyebrow">Playlist</span>
+        <div class="pl-name-row">
+          <h2 id="plName"></h2>
+          <input id="plNameInput" class="pl-name-input" type="text" maxlength="60" aria-label="Playlist name" hidden>
+          <button id="renameBtn" class="icon-btn subtle" type="button" title="Rename playlist" aria-label="Rename playlist"></button>
+        </div>
+        <p id="plStats" class="pl-stats"></p>
+      </div>
+      <div class="pl-actions">
+        <button id="playAll" class="primary" type="button"></button>
+        <button id="deletePlaylist" class="ghost-btn danger" type="button">Delete playlist</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="add-group">
+        <span class="label">Add songs to</span>
+        <div class="segmented" id="insertMode" role="radiogroup" aria-label="Where new songs go">
+          <button type="button" data-mode="start" role="radio">Start</button>
+          <button type="button" data-mode="end" role="radio" class="on">End</button>
+          <button type="button" data-mode="pick" role="radio">Pick a spot</button>
+        </div>
+        <button id="addFiles" class="primary" type="button"></button>
+        <button id="addFolder" class="ghost-btn" type="button"></button>
+      </div>
+      <div class="tool-group">
+        <select id="sortBy" aria-label="Sort playlist">
+          <option value="">Sort by…</option>
+          <option value="title">Title (A–Z)</option>
+          <option value="artist">Artist (A–Z)</option>
+          <option value="duration">Shortest first</option>
+          <option value="added">Oldest added first</option>
+        </select>
+        <button id="reverseBtn" class="ghost-btn" type="button"></button>
+        <button id="clearBtn" class="ghost-btn danger" type="button">Clear</button>
+        <div class="segmented small" id="viewTabs" role="tablist" aria-label="View">
+          <button type="button" data-view="queue" class="on" role="tab">List</button>
+          <button type="button" data-view="chain" role="tab">Chain</button>
+        </div>
+      </div>
+    </div>
+
+    <p id="pickHint" class="pick-hint" hidden>Choose a highlighted gap below. New songs will go exactly there.</p>
+    <div id="songList" class="song-list"></div>
+    <div id="chainView" class="chain" hidden></div>
+  </main>
+
+  <section class="stage" id="stage" aria-label="Now playing">
+    <div class="cover-wrap">
+      <div class="cover" id="cover"></div>
+      <canvas id="viz" aria-hidden="true"></canvas>
+    </div>
+    <div class="np-text">
+      <span class="eyebrow" id="npFrom">Nothing playing</span>
+      <h3 id="npTitle">Pick a song to start</h3>
+      <p id="npArtist">Add music from your device</p>
+    </div>
+    <div class="seek">
+      <span id="tCur" class="time">0:00</span>
+      <input type="range" id="seekBar" min="0" max="1000" value="0" step="1" aria-label="Seek">
+      <span id="tDur" class="time">0:00</span>
+    </div>
+    <div class="controls">
+      <button id="shuffleBtn" class="ctrl" type="button" title="Shuffle (S)" aria-label="Shuffle"></button>
+      <button id="prevBtn" class="ctrl" type="button" title="Previous song (P)" aria-label="Previous song"></button>
+      <button id="playBtn" class="ctrl play" type="button" title="Play / pause (Space)" aria-label="Play"></button>
+      <button id="nextBtn" class="ctrl" type="button" title="Next song (N)" aria-label="Next song"></button>
+      <button id="repeatBtn" class="ctrl" type="button" title="Repeat (R)" aria-label="Repeat"></button>
+    </div>
+    <div class="neighbors">
+      <button id="prevPeek" class="peek" type="button"><span class="eyebrow">← prev node</span><span id="prevTitle" class="peek-title">null</span></button>
+      <button id="nextPeek" class="peek right" type="button"><span class="eyebrow">next node →</span><span id="nextTitle" class="peek-title">null</span></button>
+    </div>
+    <div class="extras">
+      <button id="muteBtn" class="icon-btn subtle" type="button" title="Mute (M)" aria-label="Mute"></button>
+      <input type="range" id="volume" min="0" max="100" value="80" aria-label="Volume">
+      <span id="volPct" class="time vol-pct">80%</span>
+      <select id="speed" aria-label="Playback speed">
+        <option value="0.75">0.75×</option>
+        <option value="1" selected>1×</option>
+        <option value="1.25">1.25×</option>
+        <option value="1.5">1.5×</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="mini" id="mini">
+    <div class="mini-progress"><span id="miniBar"></span></div>
+    <div class="mini-cover" id="miniCover"></div>
+    <div class="mini-text"><strong id="miniTitle">Nothing playing</strong><span id="miniArtist">Tandem</span></div>
+    <button id="miniPrev" class="ctrl" type="button" aria-label="Previous song"></button>
+    <button id="miniPlay" class="ctrl play sm" type="button" aria-label="Play"></button>
+    <button id="miniNext" class="ctrl" type="button" aria-label="Next song"></button>
+  </div>
+</div>
+
+<input id="filePicker" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.opus" multiple hidden>
+<input id="folderPicker" type="file" webkitdirectory multiple hidden>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="dropOverlay" class="drop-overlay" hidden><div>Drop your songs anywhere</div></div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h4 id="modalTitle"></h4>
+    <div id="modalBody" class="modal-body"></div>
+    <div class="modal-actions">
+      <button id="modalCancel" class="ghost-btn" type="button">Cancel</button>
+      <button id="modalOk" class="primary" type="button">OK</button>
+    </div>
+  </div>
+</div>
+<!--APP-END-->
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
